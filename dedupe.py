@@ -48,7 +48,6 @@ def cache_format(files_by_hash, dir_path):
             info['path'] = os.path.relpath(info['path'], dir_path)
             res.append(info)
 
-    print(res)
     return res
 
 
@@ -123,7 +122,13 @@ def in_duplicated_dirs(files, duplicated_dirs):
     matching_paths = {Path(d, rel_path) for d in matching_dirs}
     
     return all(Path(f) in matching_paths for f in files[1:])
-            
+
+_home_dir = os.path.expanduser('~').rstrip('/\\')
+def compress_user(p):
+    p = str(p)
+    if p.startswith(_home_dir):
+        return '~' + p[len(_home_dir):]
+    return p
 
 def print_duplicates(dirs_by_hash, files_by_hash):
     duplicated_dirs = {}
@@ -138,8 +143,9 @@ def print_duplicates(dirs_by_hash, files_by_hash):
             continue
         if in_duplicated_dirs(l, duplicated_dirs):
             continue
-        for d in l:
-            print(d)
+        print(compress_user(l[0]), '(Directory)')
+        for d in l[1:]:
+            print(compress_user(d))
         print()
     
     for l in files_by_hash.values():
@@ -148,7 +154,7 @@ def print_duplicates(dirs_by_hash, files_by_hash):
         if in_duplicated_dirs([f['path'] for f in l], duplicated_dirs):
             continue
         for f in l:
-            print(f['path'])
+            print(compress_user(f['path']))
         print()
 
 def main(argv=None):
