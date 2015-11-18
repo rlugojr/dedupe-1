@@ -166,12 +166,14 @@ def main(argv=None):
     dirs_by_hash = defaultdict(list)    
     
     for d in args.directory:
+        print('Scanning %s...' % d)
         _, dirs_to_add, files_to_add = get_dir_hashes(Path(d).resolve(), {},
                                                       top_level=True)
     
         update_dict_list(dirs_by_hash, dirs_to_add)
         update_dict_list(files_by_hash, files_to_add)
     
+    print()
     print_duplicates(dirs_by_hash, files_by_hash)
 
 if __name__ == '__main__':
