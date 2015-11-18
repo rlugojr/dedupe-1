@@ -100,13 +100,15 @@ def get_dir_hashes(path, cached, top_level=False):
     for record in sorted(contents):
         # 1F: unit separator, 1E: record separator
         s = '\x1f'.join(record) + '\x1e'
-        dir_hash.update(s.encode('utf-8'))
+        dir_hash.update(s.encode('utf-8', 'surrogateescape'))
 
     if cache_file.is_file() or top_level:
         with cache_file.open('w') as f:
             json.dump(cache_format(files_by_hash, str(path)), f, indent=1)
 
-    dirs_by_hash[dir_hash.hexdigest()].append(path)
+    if contents:
+        # Don't bother storing hashes for empty directories.
+        dirs_by_hash[dir_hash.hexdigest()].append(path)
     return dir_hash.hexdigest(), dirs_by_hash, files_by_hash
 
 def in_duplicated_dirs(files, duplicated_dirs):
@@ -150,6 +152,9 @@ def print_duplicates(dirs_by_hash, files_by_hash):
     
     for l in files_by_hash.values():
         if len(l) < 2:
+            continue
+        if l[0]['st_size'] == 0:
+            # Empty files aren't interesting
             continue
         if in_duplicated_dirs([f['path'] for f in l], duplicated_dirs):
             continue
