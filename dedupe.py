@@ -56,7 +56,7 @@ def update_dict_list(target, update_from):
         for x in l:
             target[k].append(x)
 
-def get_dir_hashes(path, cached, top_level=False):
+def get_dir_hashes(path, cached, exclude, top_level=False):
     cache_file = path / '.dedupe_cache.json'
     if cache_file.is_file():
         with cache_file.open('r') as f:
@@ -69,8 +69,15 @@ def get_dir_hashes(path, cached, top_level=False):
     
     for file in path.iterdir():
         p = os.path.normpath(str(file))
+        if p in exclude:
+            # Add a random entry to the contents so the directory won't be
+            # equal to any other.
+            contents.append(('X', file.name,
+                             os.urandom(20).decode('ascii', 'surrogateescape')))
+            continue
+            
         if file.is_dir():
-            subdir_hash, sd_dirs, sd_files = get_dir_hashes(file, cached)
+            subdir_hash, sd_dirs, sd_files = get_dir_hashes(file, cached, exclude)
             contents.append(('D', file.name, subdir_hash))
             update_dict_list(dirs_by_hash, sd_dirs)
             update_dict_list(files_by_hash, sd_files)
@@ -164,15 +171,20 @@ def print_duplicates(dirs_by_hash, files_by_hash):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
+    ap.add_argument('-x', '--exclude', action='append')
     ap.add_argument('directory', nargs='+')
     args = ap.parse_args(argv)
     
     files_by_hash = defaultdict(list)
     dirs_by_hash = defaultdict(list)    
     
+    exclude = {os.path.abspath(p) for p in args.exclude} \
+                if args.exclude else set()
+    
     for d in args.directory:
         print('Scanning %s...' % d)
         _, dirs_to_add, files_to_add = get_dir_hashes(Path(d).resolve(), {},
+                                                      exclude=exclude,
                                                       top_level=True)
     
         update_dict_list(dirs_by_hash, dirs_to_add)
